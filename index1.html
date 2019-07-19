@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - skinning and morphing</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<!-- <link type="text/css" rel="stylesheet" href="main.css"> -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+	<script type="text/javascript" src="JS/three.js"></script>
+	<script type="text/javascript" src="JS/orbitcontrols.js"></script>
+	<style>
+		body {
+			color: #222;
+		}
+
+		a {
+			color: #2fa1d6;
+		}
+
+		p {
+			max-width: 600px;
+			margin-left: auto;
+			margin-right: auto;
+			padding: 0 2em;
+		}
+
+		#info {
+			position: fixed;
+
+			margin-top: 20%;
+			margin-left: 6%;
+		}
+	</style>
+	<style>
+		/*Dice css*/
+		.wrap {
+			width: 90px;
+			height: 90px;
+			margin: 120px auto 30px auto;
+			position: relative
+		}
+
+		.dice {
+			width: 90px;
+			height: 90px;
+			background: url(http://www.goocode.net/demo/dice/dice.png) no-repeat;
+		}
+
+		.dice_1 {
+			background-position: -5px -4px
+		}
+
+		.dice_2 {
+			background-position: -5px -107px
+		}
+
+		.dice_3 {
+			background-position: -5px -212px
+		}
+
+		.dice_4 {
+			background-position: -5px -317px
+		}
+
+		.dice_5 {
+			background-position: -5px -427px
+		}
+
+		.dice_6 {
+			background-position: -5px -535px
+		}
+
+		.dice_t {
+			background-position: -5px -651px
+		}
+
+		.dice_s {
+			background-position: -5px -763px
+		}
+
+		.dice_e {
+			background-position: -5px -876px
+		}
+
+		p#result {
+			text-align: center;
+			font-size: 16px
+		}
+
+		p#result span {
+			font-weight: bold;
+			color: #f30;
+			margin: 6px
+		}
+
+		#dice_mask {
+			width: 90px;
+			height: 90px;
+			background: #fff;
+			opacity: 0;
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: 999
+		}
+	</style>
+</head>
+
+<body>
+	<div id="info">
+		<!-- <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> webgl - skinning and morphing<br /> -->
+		<!-- <p>
+				The animation system allows clips to be played individually, looped, or crossfaded with other clips. This example shows a character looping in one of several base animation states, then transitioning smoothly to one-time actions. Facial expressions are controlled independently with morph targets.
+			</p>
+			Model by
+			<a href="https://www.patreon.com/quaternius" target="_blank" rel="noopener">Tomás Laulhé</a>,
+			modifications by <a href="https://donmccurdy.com/" target="_blank" rel="noopener">Don McCurdy</a>. CC0.<br /> -->
+		<div id="dice" class="dice dice_1"></div>
+		<p id="result">Please click above dice!</p>
+	</div>
+	<script type="module">
+		import * as THREE from './three.js-dev/build/three.module.js';
+		import Stats from './three.js-dev/examples/jsm/libs/stats.module.js';
+		import { GUI } from './three.js-dev/examples/jsm/libs/dat.gui.module.js';
+		import { GLTFLoader } from './three.js-dev/examples/jsm/loaders/GLTFLoader.js';
+		import { OrbitControls } from './three.js-dev/examples/jsm/controls/OrbitControls.js';
+		var container, stats, clock, gui, mixer, actions, activeAction, previousAction;
+		var camera, scene, renderer, model,model1,model2, face, num, check, controls;
+		var flag='false';
+		var x, y, z ,xx,yy,zz,xxx,yyy,zzz;
+		
+		x = 0; y = 0; z = -14;
+		xx = 14; yy=0; zz=14 ;
+		xxx=-14 ;yyy=0 ;zzz=-14 ;  
+		// var m=20,n=-10;
+		var api = { state: 'Walking' };
+		init();
+		animate();
+		function init() {
+			container = document.createElement('div');
+			document.body.appendChild(container);
+			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 2000);
+
+			camera.position.set(- 5, 10, 25);
+
+			camera.lookAt(new THREE.Vector3(0, 2, 0));
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color(0xe0e0e0);
+			scene.fog = new THREE.Fog(0xe0e0e0, 20, 100);
+			clock = new THREE.Clock();
+			controls = new OrbitControls(camera, container);
+
+			// lights
+			var light = new THREE.HemisphereLight(0xffffff, 0x444444);
+			light.position.set(0, 20, 0);
+			scene.add(light);
+			light = new THREE.DirectionalLight(0xffffff);
+			light.position.set(0, 20, 10);
+			scene.add(light);
+			// ground
+			var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), new THREE.MeshPhongMaterial({ color: 0x999999, depthWrite: false }));
+			mesh.rotation.x = - Math.PI / 2;
+			scene.add(mesh);
+			var grid = new THREE.GridHelper(30, 15, 'blue', 'yello');
+			grid.material.opacity = 0.8;
+
+			grid.material.transparent = true;
+
+			scene.add(grid);
+
+
+			//Music
+
+			//create a triangular geometry
+			var geometry = new THREE.Geometry();
+			geometry.vertices.push(new THREE.Vector3(0, 0, -15));
+			geometry.vertices.push(new THREE.Vector3(-15, 0, 15));
+			geometry.vertices.push(new THREE.Vector3(15, 0, 15));
+
+			var geometry2 = new THREE.Geometry();
+			geometry2.vertices.push(new THREE.Vector3(0, 0, -11));
+			geometry2.vertices.push(new THREE.Vector3(-11, 0, 11));
+			geometry2.vertices.push(new THREE.Vector3(11, 0, 11));
+			var normal1 = new THREE.Vector3(0, 1, 1); //optional
+			var color1 = new THREE.Color(0xffba80); //optional
+			var materialIndex1 = 0; //optional
+			var face1 = new THREE.Face3(0, 1, 2, normal1, color1, materialIndex1);
+			geometry2.faces.push(face1);
+			geometry2.computeFaceNormals();
+			geometry2.computeVertexNormals();
+			var material2 = new THREE.MeshBasicMaterial({ color: 'white' });
+			var mesh2 = new THREE.Mesh(geometry2, material2);
+
+			//create a new face using vertices 0, 1, 2
+			var normal = new THREE.Vector3(0, 1, 1); //optional
+			var color = new THREE.Color(0xffba50); //optional
+			var materialIndex = 0; //optional
+			var face = new THREE.Face3(0, 1, 2, normal, color, materialIndex);
+			scene.add(mesh2);
+
+			//add the face to the geometry's facesnml[] array
+			geometry.faces.push(face);
+
+			//the face normals and vertex normals can be calculated automatically if not supplied above
+			geometry.computeFaceNormals();
+			geometry.computeVertexNormals();
+
+			var material = new THREE.MeshBasicMaterial({ color: 'green' });
+			var mesh = new THREE.Mesh(geometry, material);
+
+			scene.add(mesh);
+
+			modelloader(0,0,-14,1);
+			modelloader(14,0,14,2);
+			modelloader(-14,0,14,3);
+
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			renderer.gammaOutput = true;
+			renderer.gammaFactor = 2.2;
+			container.appendChild(renderer.domElement);
+			window.addEventListener('resize', onWindowResize, false);
+			// stats
+			stats = new Stats();
+			container.appendChild(stats.dom);
+		}
+
+		function createGUI(model, animations) {
+			var states = ['Idle', 'Walking', 'Running', 'Dance', 'Death', 'Sitting', 'Standing'];
+			var emotes = ['Jump', 'Yes', 'No', 'Wave', 'Punch', 'ThumbsUp'];
+			gui = new GUI();
+			mixer = new THREE.AnimationMixer(model);
+			actions = {};
+
+			for (var i = 0; i < animations.length; i++) {
+				var clip = animations[i];
+				var action = mixer.clipAction(clip);
+				actions[clip.name] = action;
+				if (emotes.indexOf(clip.name) >= 0 || states.indexOf(clip.name) >= 4) {
+					action.clampWhenFinished = true;
+					action.loop = THREE.LoopOnce;
+				}
+			}
+			// states
+			var statesFolder = gui.addFolder('States');
+			var clipCtrl = statesFolder.add(api, 'state').options(states);
+			clipCtrl.onChange(function () {
+				fadeToAction(api.state, 0.5);
+			});
+			statesFolder.open();
+			// emotes
+			var emoteFolder = gui.addFolder('Emotes');
+			function createEmoteCallback(name) {
+				api[name] = function () {
+					fadeToAction(name, 0.2);
+					mixer.addEventListener('finished', restoreState);
+				};
+				emoteFolder.add(api, name);
+			}
+			function restoreState() {
+				mixer.removeEventListener('finished', restoreState);
+				fadeToAction(api.state, 0.2);
+			}
+			for (var i = 0; i < emotes.length; i++) {
+				createEmoteCallback(emotes[i]);
+			}
+			emoteFolder.open();
+			// expressions
+			face = model.getObjectByName('Head_2');
+			var expressions = Object.keys(face.morphTargetDictionary);
+			var expressionFolder = gui.addFolder('Expressions');
+			for (var i = 0; i < expressions.length; i++) {
+				expressionFolder.add(face.morphTargetInfluences, i, 0, 1, 0.01).name(expressions[i]);
+			}
+			activeAction = actions['Idle'];
+			// var dice_result =document.getElementById('dice');
+			
+
+			activeAction.play();
+			expressionFolder.open();
+		}
+
+		controls.maxPolarAngle = Math.PI / 2;
+
+		$(document).ready(function () {
+				var dice = $("#dice");
+				dice.click(function () {
+					$(".wrap").append("<div id='dice_mask'></div>");//add mask
+					dice.attr("class", "dice");//After clearing the last points animation
+					dice.css('cursor', 'default');
+					num = Math.floor(Math.random() * 6 + 1);//random num 1-6
+					dice.animate({ left: '+2px' }, 100, function () {
+						dice.addClass("dice_t");
+					}).delay(200).animate({ top: '-2px' }, 100, function () {
+						dice.removeClass("dice_t").addClass("dice_s");
+					}).delay(200).animate({ opacity: 'show' }, 600, function () {
+						dice.removeClass("dice_s").addClass("dice_e");
+					}).delay(100).animate({ left: '-2px', top: '2px' }, 100, function () {
+						dice.removeClass("dice_e").addClass("dice_" + num);
+						$("#result").html("Your throwing points are<span>" + num + "</span>");
+						dice.css('cursor', 'pointer');
+						$("#dice_mask").remove();//remove mask
+					ModelActive();
+						
+					});
+				});
+			});
+
+		function ModalAction() {
+			
+
+				if (x >= 0 && z < 14) {
+					x++;
+					z += 2;
+					model1.position.set(x, y, z);
+					console.log("first if");
+				}
+				else if (x > -14 && z == 14) {
+					x -= 2;
+					model1.position.set(x, y, z);
+					console.log("2nd if");
+
+				}
+				else if (x < 0 && z <= 14) {
+					++x;
+					z -= 2;
+					// model.rotation.y=3.6;
+					model1.position.set(x, y, z);
+					console.log("only else");
+
+				}
+			
+		}
+		function fadeToAction(name, duration) {
+			previousAction = activeAction;
+			activeAction = actions[name];
+			if (previousAction !== activeAction) {
+				previousAction.fadeOut(duration);
+			}
+			activeAction
+				.reset()
+				.setEffectiveTimeScale(1)
+				.setEffectiveWeight(1)
+				.fadeIn(duration)
+				.play();
+		}
+		function onWindowResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+		//
+		function animate() {
+			var dt = clock.getDelta();
+			var step = 0;
+
+			// 		if(num=='1'){	
+			// 	step=step+num;
+			// 			activeAction =actions['Sitting'];
+			// 	activeAction.play();
+
+			// 	activeAction.reset();
+
+			// }
+			// else if(num=='2'){
+			// 	activeAction =actions['Walking'];
+
+			// 	activeAction.play();
+			// }
+			// else if(num=='3'){
+			// 	activeAction =actions['Running'];
+
+			// 	activeAction.play();
+			// }
+			// else if(num=='4'){
+			// 	activeAction =actions['Dance'];
+
+			// 	activeAction.play();
+			// }
+			// else if(num=='5'){
+			// 	activeAction =actions['Idle'];
+			// 	activeAction.play();
+			// }
+			// else if(num=='6'){
+
+			// 	activeAction =actions['Dance'];
+			// 	activeAction.play();
+
+			// }
+			// else{
+			// 	console.log("Nothing");
+			// }
+
+
+
+			if (mixer) mixer.update(dt);
+			requestAnimationFrame(animate);
+			controls.update();
+			renderer.render(scene, camera);
+
+			stats.update();
+		}
+		function music() {
+			var listener = new THREE.AudioListener();
+			camera.add(listener);
+
+			// create a global audio source
+			var sound = new THREE.Audio(listener);
+
+			// load a sound and set it as the Audio object's buffer
+			var audioLoader = new THREE.AudioLoader();
+			audioLoader.load('three.js-dev/examples/sounds/376737_Skullbeatz___Bad_Cat_Maste.mp3', function (buffer) {
+				sound.setBuffer(buffer);
+				sound.setLoop(true);
+				sound.setVolume(0.5);
+				sound.play();
+			});
+		}
+		function modelloader(a,b,c,position) {
+			// model
+			var loader = new GLTFLoader();
+			loader.load('three.js-dev/examples/models/gltf/RobotExpressive/RobotExpressive.glb', function (gltf) {
+				
+				
+				
+				if (position == 1) {
+					model=gltf.scene;
+					model.position.set(a, b, c);
+
+					scene.add(model);
+				}
+				if (position == 2) {
+					model1=gltf.scene;
+					model1.position.set(a, b, c);
+					model1.rotation.y = -1.8;
+					scene.add(model1);
+				}
+				if (position == 3) {
+					model2=gltf.scene;
+					model2.position.set(a, b, c);
+					model2.rotation.y = 2;
+					scene.add(model2);
+				}
+				// createGUI(model, gltf.animations);
+			}, undefined, function (e) {
+				console.error(e);
+			});
+		
+		}
+		function ModelActive(){
+						for (var n = 1; n <= num; n++) {
+							if(num==1){
+								flag='true';
+							}
+							if(flag=='true')
+							{
+								ModalAction();}
+						}
+
+						}
+
+		
+	</script>
+
+</body>
+
+</html>
